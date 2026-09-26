@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>易經三枚硬幣卜卦程式</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            max-width: 700px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #fff;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border-radius: 8px;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            border-bottom: 2px solid #eaeaea;
+            padding-bottom: 15px;
+        }
+        .step-container {
+            margin-bottom: 20px;
+        }
+        label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 8px;
+            color: #34495e;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .btn-group {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .btn-coin {
+            background-color: #ecf0f1;
+            color: #2c3e50;
+            border: 1px solid #bdc3c7;
+            padding: 12px;
+            font-size: 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-coin:hover {
+            background-color: #d5dbdb;
+        }
+        #result-area {
+            margin-top: 30px;
+            border-top: 2px dashed #bdc3c7;
+            padding-top: 20px;
+            white-space: pre-wrap;
+            background: #fafafa;
+            padding: 20px;
+            border-radius: 6px;
+            font-family: monospace;
+            line-height: 1.6;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>易經三枚硬幣卜卦程式</h1>
+
+    <!-- 步驟一：輸入問題 -->
+    <div id="question-step" class="step-container">
+        <label for="question-input">請輸入您心中想問的問題：</label>
+        <input type="text" id="question-input" placeholder="例如：這個專案申請會過嗎？">
+        <button onclick="startDivination()">開始卜卦</button>
+    </div>
+
+    <!-- 步驟二：投擲硬幣 -->
+    <div id="coin-step" class="step-container hidden">
+        <h3 id="prompt-title"></h3>
+        <p style="font-size: 14px; color: #7f8c8d;">請點選對應的投擲結果（初爻至上爻）：</p>
+        <div class="btn-group">
+            <button class="btn-coin" onclick="recordCoin('3正')">3正 (老陽)</button>
+            <button class="btn-coin" onclick="recordCoin('3反')">3反 (老陰)</button>
+            <button class="btn-coin" onclick="recordCoin('2正1反')">2正1反 (少陽)</button>
+            <button class="btn-coin" onclick="recordCoin('1正2反')">1正2反 (少陰)</button>
+        </div>
+    </div>
+
+    <!-- 結果顯示區 -->
+    <div id="result-area" class="hidden"></div>
+
+<script>
+const TRIGRAMS = {
+    "1,1,1": ["乾", "三乾"],
+    "1,1,0": ["兌", "三兌"],
+    "1,0,1": ["離", "三離"],
+    "1,0,0": ["震", "三震"],
+    "0,1,1": ["巽", "三巽"],
+    "0,1,0": ["坎", "三坎"],
+    "0,0,1": ["艮", "三艮"],
+    "0,0,0": ["坤", "三坤"]
+};
+
+const HEXAGRAMS = {
+    "乾,乾": [1, "乾為天"], "乾,坤": [11, "地天泰"], "乾,震": [34, "雷天大壯"], "乾,艮": [26, "山天大畜"], "乾,離": [13, "天火同人"], "乾,坎": [6, "天水訟"], "乾,兌": [10, "天澤履"], "乾,巽": [9, "風天小畜"],
+    "坤,乾": [12, "天地否"], "坤,坤": [2, "坤為地"], "坤,震": [16, "雷地豫"], "坤,艮": [23, "山地剝"], "坤,離": [35, "火地晉"], "坤,坎": [8, "水地比"], "坤,兌": [45, "澤地萃"], "坤,巽": [20, "風地觀"],
+    "震,乾": [25, "天雷無妄"], "震,坤": [24, "地雷復"], "震,震": [51, "震為雷"], "震,艮": [27, "山雷頤"], "震,離": [21, "火雷噬嗑"], "震,坎": [40, "雷水解"], "震,兌": [17, "澤雷隨"], "震,巽": [32, "雷風恆"],
+    "艮,乾": [33, "天山遯"], "艮,坤": [15, "地山謙"], "艮,震": [62, "雷山小過"], "艮,艮": [52, "艮為山"], "艮,離": [56, "火山旅"], "艮,坎": [39, "水山蹇"], "艮,兌": [31, "澤山咸"], "艮,巽": [53, "風山漸"],
+    "離,乾": [44, "天火姤"], "離,坤": [36, "火地晉"], "離,震": [55, "雷火豐"], "離,艮": [22, "山火賁"], "離,離": [30, "離為火"], "離,坎": [63, "水火既濟"], "離,兌": [49, "澤火革"], "離,巽": [50, "火風鼎"],
+    "坎,乾": [5, "水天需"], "坎,坤": [7, "地水師"], "坎,震": [3, "水雷屯"], "坎,艮": [4, "山水蒙"], "坎,離": [64, "火水未濟"], "坎,坎": [29, "坎為水"], "坎,兌": [47, "澤水困"], "坎,巽": [48, "水風井"],
+    "兌,乾": [43, "澤天夬"], "兌,坤": [19, "地澤臨"], "兌,震": [54, "雷澤歸妹"], "兌,艮": [41, "山澤損"], "兌,離": [38, "火澤睽"], "兌,坎": [60, "水澤節"], "兌,兌": [58, "兌為澤"], "兌,巽": [28, "澤風大過"],
+    "巽,乾": [57, "巽為風"], "巽,坤": [46, "地風升"], "巽,震": [42, "風雷益"], "巽,艮": [18, "山風蠱"], "巽,離": [37, "風火家人"], "巽,坎": [59, "風水渙"], "巽,兌": [61, "風澤中孚"], "巽,巽": [57, "巽為風"]
+};
+
+const prompts = [
+    "第一次（初爻 - 最底下）", "第二次（二爻）", "第三次（三爻）", 
+    "第四次（四爻）", "第五次（五爻）", "第六次（上爻 - 最上面）"
+];
+
+let currentQuestion = "";
+let currentStep = 0;
+let originalLines = [];
+let changedLines = [];
+let changingIndices = [];
+
+function startDivination() {
+    const qInput = document.getElementById("question-input").value.trim();
+    if (!qInput) {
+        alert("請先輸入您想問的問題！");
+        return;
+    }
+    currentQuestion = qInput;
+    currentStep = 0;
+    originalLines = [];
+    changedLines = [];
+    changingIndices = [];
+
+    document.getElementById("question-step").classList.add("hidden");
+    document.getElementById("coin-step").classList.remove("hidden");
+    updatePrompt();
+}
+
+function updatePrompt() {
+    document.getElementById("prompt-title").innerText = `【投擲進度】 ${prompts[currentStep]}`;
+}
+
+function recordCoin(result) {
+    let orig, chg;
+    if (result === "3正") { orig = 1; chg = 0; }
+    else if (result === "3反") { orig = 0; chg = 1; }
+    else if (result === "2正1反") { orig = 1; chg = 1; }
+    else if (result === "1正2反") { orig = 0; chg = 0; }
+
+    originalLines.push(orig);
+    changedLines.push(chg);
+
+    if (orig !== chg) {
+        changingIndices.push(currentStep + 1);
+    }
+
+    currentStep++;
+
+    if (currentStep < 6) {
+        updatePrompt();
+    } else {
+        showFinalResult();
+    }
+}
+
+function getTrigram(lines) {
+    let key = lines.join(",");
+    return TRIGRAMS[key] || ["未知", "三未知"];
+}
+
+function getHexagram(lines) {
+    let lowerLines = lines.slice(0, 3);
+    let upperLines = lines.slice(3, 6);
+    let [lowerName, lowerSymbol] = getTrigram(lowerLines);
+    let [upperName, upperSymbol] = getTrigram(upperLines);
+    let hexInfo = HEXAGRAMS[`${upperName},${lowerName}`] || [0, "未知卦"];
+    return {
+        number: hexInfo[0], name: hexInfo[1],
+        upper: upperName, upper_symbol: upperSymbol,
+        lower: lowerName, lower_symbol: lowerSymbol
+    };
+}
+
+function showFinalResult() {
+    document.getElementById("coin-step").classList.add("hidden");
+    
+    let original = getHexagram(originalLines);
+    let changed = getHexagram(changedLines);
+
+    let output = "============================================================\n";
+    output += "                 【 易經卜卦結果 】\n";
+    output += "============================================================\n\n";
+    output += `問題：${currentQuestion}\n`;
+    output += "------------------------------------------------------------\n";
+    output += "【 本卦 】\n";
+    output += `第 ${original.number} 卦：${original.name}\n`;
+    output += `直軸（上卦）：${original.upper} （${original.upper_symbol}）\n`;
+    output += `橫軸（下卦）：${original.lower} （${original.lower_symbol}）\n`;
+
+    if (changingIndices.length > 0) {
+        output += "------------------------------------------------------------\n";
+        output += `【 動爻 】第 ${changingIndices.join("、")} 爻\n`;
+    } else {
+        output += "\n【 動爻 】無\n";
+    }
+
+    output += "------------------------------------------------------------\n";
+    output += "【 變卦 】\n";
+    output += `第 ${changed.number} 卦：${changed.name}\n`;
+    output += `直軸（上卦）：${changed.upper} （${changed.upper_symbol}）\n`;
+    output += `橫軸（下卦）：${changed.lower} （${changed.lower_symbol}）\n\n";
+
+    output += "------------------------------------------------------------\n";
+    output += "💡 【 智慧情境與時間解析 】\n";
+    
+    if (currentQuestion.includes("計畫") || currentQuestion.includes("經費") || currentQuestion.includes("補助") || currentQuestion.includes("審查") || currentQuestion.includes("申請")) {
+        output += "【學術/專案計畫審查專屬解析】\n";
+        if (original.name === "火雷噬嗑" && changed.name === "震為雷") {
+            output += "1. 審查過程（本卦《火雷噬嗑》）：\n";
+            output += "   - 審查過程非常嚴格且競爭激烈，評審會挑出計畫瑕疵或提出修改意見。\n";
+            output += "2. 關鍵轉折：\n";
+            output += "   - 過程中雖需花心思補漏洞，但結局是能順利克服，不會導致計畫被刷掉。\n";
+            output += "3. 最終結果與時機（變卦《震為雷》）：\n";
+            output += "   - 答案是：會過！經歷審查陣痛與突破後，好消息與經費敲定預計落在明年初春（2027年2月至4月間）。\n";
+        } else {
+            output += `1. 現狀評估：當前處於【${original.name}】之象，推進此計畫正經歷調整期。\n`;
+            if (changingIndices.length > 0) {
+                output += `2. 變爻關鍵：透過第 ${changingIndices.join(", ")} 爻的變動，正從現狀過渡到【${changed.name}】。\n`;
+                output += "3. 最終趨勢：針對核心技術與審查痛點精進，突破瓶頸後即能迎來轉機。\n";
+            } else {
+                output += "3. 最終趨勢：無變爻，情勢相對穩定，需持續照既定方向扎實推進。\n";
+            }
+        }
+    } else {
+        output += `1. 當前現狀（本卦【${original.name}】）：反映出您目前面臨的核心局勢。面對阻礙切忌急躁，應找出問題根源。\n`;
+        if (changingIndices.length > 0) {
+            output += `2. 關鍵轉折（第 ${changingIndices.join(", ")} 爻動）：這是事情突破的關鍵施力點，調整策略即可化解卡關狀態。\n`;
+            output += `3. 最終結果（變卦【${changed.name}】）：經過調整與突破後，事情最終將走向此卦象徵的方向。\n`;
+        } else {
+            output += "2. 發展趨勢：本卦無變爻，局勢單純明朗，建議穩扎穩打持續推進。\n";
+        }
+    }
+    output += "============================================================\n";
+
+    let resultArea = document.getElementById("result-area");
+    resultArea.innerText = output;
+    resultArea.classList.remove("hidden");
+}
+</script>
+
+</body>
+</html>
